@@ -1,14 +1,18 @@
 <?php
 
-// Función centralizada para peticiones (GraphQL siempre usa POST)
-function apiRequest(string $url, array $data, string $token = null): array
+/**
+ * Función Genérica para peticiones HTTP con cURL
+ * En esta arquitectura Híbrida, TANTO el Login (REST) como GraphQL usan el método POST.
+ */
+function apiRequest(string $url, array $data = null, string $token = null): array
 {
     $curl = curl_init();
     $headers = [
-        'Content-Type: application/json',
-        'Accept: application/json'
+        'Accept: application/json',
+        'Content-Type: application/json'
     ];
 
+    // Si hay un token, lo inyectamos en la cabecera
     if ($token) {
         $headers[] = 'Authorization: Bearer ' . $token;
     }
@@ -16,9 +20,9 @@ function apiRequest(string $url, array $data, string $token = null): array
     curl_setopt_array($curl, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_CUSTOMREQUEST => 'POST', // Siempre POST para REST-Login y GraphQL
         CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => $data ? json_encode($data) : null,
     ]);
 
     $response = curl_exec($curl);
@@ -26,32 +30,52 @@ function apiRequest(string $url, array $data, string $token = null): array
     curl_close($curl);
 
     if ($error) {
-        throw new RuntimeException('cURL error: ' . $error);
+        throw new RuntimeException('Error de cURL: ' . $error);
     }
 
-    return json_decode($response, true) ?: [];
+    $result = json_decode($response, true);
+    return $result ?: [];
 }
 
-// 1. Login (Sigue siendo REST)
+/**
+ * 1. LOGIN (API REST)
+ * Se comunica con la ruta tradicional de Laravel para obtener el JWT.
+ */
 function login(string $email, string $password): array
 {
     return apiRequest('http://127.0.0.1:8000/api/login', [
         'email' => $email,
-        'password' => $password,
+        'password' => $password
     ]);
 }
 
-// 2. Obtener Personas (GraphQL Query)
+/**
+ * 2. LISTAR PERSONAS (GraphQL Query)
+ * Pide exactamente los campos que necesita mostrar la tabla.
+ */
 function getPersonas(string $token): array
 {
-    $query = 'query { personas { data { id nombres apellidos documento_identidad sexo fecha_nacimiento celular } } }';
+    $query = 'query {
+        personas {
+            data {
+                id
+                nombres
+                apellidos
+                documento_identidad
+                sexo
+                fecha_nacimiento
+                celular
+            }
+        }
+    }';
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $query], $token);
 }
 
-// 3. Crear Persona (GraphQL Mutation)
+/**
+ * 3. CREAR PERSONA (GraphQL Mutation)
+ */
 function createPersona(string $token, array $data): array
 {
-    // Cuidado: Los Enum en GraphQL (como Sexo) no llevan comillas dobles alrededor
     $mutation = 'mutation {
         crearPersona(
             nombres: "'.$data['nombres'].'", 
@@ -65,17 +89,17 @@ function createPersona(string $token, array $data): array
             nombres
         }
     }';
-
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $mutation], $token);
 }
 
-
-// 4. Actualizar Persona (GraphQL Mutation)
+/**
+ * 4. ACTUALIZAR PERSONA (GraphQL Mutation)
+ */
 function updatePersona(string $token, array $data): array
 {
     $mutation = 'mutation {
         actualizarPersona(
-            id: '.$data['id'].',
+            id: "'.$data['id'].'", 
             nombres: "'.$data['nombres'].'", 
             apellidos: "'.$data['apellidos'].'", 
             documento_identidad: "'.$data['ci'].'", 
@@ -84,20 +108,21 @@ function updatePersona(string $token, array $data): array
             celular: '.$data['celular'].'
         ) {
             id
-            nombres
         }
     }';
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $mutation], $token);
 }
 
-// 5. Eliminar Persona (GraphQL Mutation)
+/**
+ * 5. ELIMINAR PERSONA (GraphQL Mutation)
+ * Utiliza comillas en el ID para respetar la validación @whereKey de Lighthouse.
+ */
 function deletePersona(string $token, $id): array
 {
     $mutation = 'mutation {
-        eliminarPersona(id: '.$id.') {
+        eliminarPersona(id: "'.$id.'") {
             id
         }
     }';
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $mutation], $token);
 }
-
