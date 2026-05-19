@@ -1,9 +1,5 @@
 <?php
-
-/**
- * Función Genérica para peticiones HTTP con cURL
- * En esta arquitectura Híbrida, TANTO el Login (REST) como GraphQL usan el método POST.
- */
+// funcion para que GrapqQL acepte la conexion
 function apiRequest(string $url, array $data = null, string $token = null): array
 {
     $curl = curl_init();
@@ -11,8 +7,7 @@ function apiRequest(string $url, array $data = null, string $token = null): arra
         'Accept: application/json',
         'Content-Type: application/json'
     ];
-
-    // Si hay un token, lo inyectamos en la cabecera
+    // si el usuario se logeo atrapa su token y va en la cabezera HTTP
     if ($token) {
         $headers[] = 'Authorization: Bearer ' . $token;
     }
@@ -33,14 +28,13 @@ function apiRequest(string $url, array $data = null, string $token = null): arra
         throw new RuntimeException('Error de cURL: ' . $error);
     }
 
+    // empaquetar las peticiones
     $result = json_decode($response, true);
     return $result ?: [];
 }
 
-/**
- * 1. LOGIN (API REST)
- * Se comunica con la ruta tradicional de Laravel para obtener el JWT.
- */
+
+/** 1. LOGIN (API REST Se comunica con la ruta tradicional de Laravel para obtener el JWT. */
 function login(string $email, string $password): array
 {
     return apiRequest('http://127.0.0.1:8000/api/login', [
@@ -49,10 +43,7 @@ function login(string $email, string $password): array
     ]);
 }
 
-/**
- * 2. LISTAR PERSONAS (GraphQL Query)
- * Pide exactamente los campos que necesita mostrar la tabla.
- */
+ /* 2. LISTAR PERSONAS (GraphQL Query) pide exactamente los campos que necesita mostrar la tabla. */
 function getPersonas(string $token): array
 {
     $query = 'query {
@@ -71,9 +62,6 @@ function getPersonas(string $token): array
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $query], $token);
 }
 
-/**
- * 3. CREAR PERSONA (GraphQL Mutation)
- */
 function createPersona(string $token, array $data): array
 {
     $mutation = 'mutation {
@@ -92,9 +80,6 @@ function createPersona(string $token, array $data): array
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $mutation], $token);
 }
 
-/**
- * 4. ACTUALIZAR PERSONA (GraphQL Mutation)
- */
 function updatePersona(string $token, array $data): array
 {
     $mutation = 'mutation {
@@ -113,10 +98,6 @@ function updatePersona(string $token, array $data): array
     return apiRequest('http://127.0.0.1:8000/graphql', ['query' => $mutation], $token);
 }
 
-/**
- * 5. ELIMINAR PERSONA (GraphQL Mutation)
- * Utiliza comillas en el ID para respetar la validación @whereKey de Lighthouse.
- */
 function deletePersona(string $token, $id): array
 {
     $mutation = 'mutation {

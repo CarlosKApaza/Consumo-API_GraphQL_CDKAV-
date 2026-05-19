@@ -6,11 +6,10 @@ $message = '';
 $error = '';
 $personas = [];
 $token = $_SESSION['api_token'] ?? null;
-
 $action = $_POST['action'] ?? null;
 
 try {
-    // ACCIÓN: LOGIN (REST)
+    // login rest
     if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $password = trim($_POST['password'] ?? '');
@@ -25,14 +24,14 @@ try {
         }
     }
 
-    // ACCIÓN: CERRAR SESIÓN
+    // Cerrar session
     if ($action === 'logout') {
         session_destroy();
         header("Location: index.php");
         exit;
     }
 
-    // ACCIÓN: CREAR PERSONA (GraphQL)
+    // Crear Persona (GraphQL)
     if ($token && $action === 'create_persona' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $created = createPersona($token, [
             'nombres' => trim($_POST['nombres']),
@@ -49,7 +48,7 @@ try {
         $message = 'Persona registrada exitosamente.';
     }
 
-    // ACCIÓN: ACTUALIZAR PERSONA (GraphQL)
+    // Actualizar Persona (GraphQL)
     if ($token && $action === 'update_persona' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $updated = updatePersona($token, [
             'id' => trim($_POST['id']),
@@ -67,7 +66,7 @@ try {
         $message = 'Persona actualizada exitosamente.';
     }
 
-    // ACCIÓN: ELIMINAR PERSONA (GraphQL)
+    // Eliminar Persona (GraphQL)
     if ($token && $action === 'delete_persona' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $deleted = deletePersona($token, trim($_POST['id']));
         
@@ -77,7 +76,7 @@ try {
         $message = 'Persona eliminada exitosamente.';
     }
 
-    // CARGAR TABLA (GraphQL)
+    // Cargar Tabla (GraphQL)
     if ($token) {
         $respuesta = getPersonas($token);
         $personas = $respuesta['data']['personas']['data'] ?? [];
@@ -104,12 +103,10 @@ try {
 </header>
 
 <div class="container">
-    <!-- Bloque de Alertas del Sistema -->
     <?php if ($error): ?> <div class="alert alert-error"><?= htmlspecialchars($error) ?></div> <?php endif; ?>
     <?php if ($message): ?> <div class="alert alert-success"><?= htmlspecialchars($message) ?></div> <?php endif; ?>
 
     <?php if (!$token): ?>
-        <!-- Vista del Login (Aislada del Grid Principal) -->
         <div class="login-box">
             <h3>Iniciar Sesión (API REST)</h3>
             <form method="POST">
@@ -127,14 +124,12 @@ try {
         </div>
 
     <?php else: ?>
-        <!-- Botón de deslogueo posicionado superior derecho -->
         <form method="POST" style="display:inline;">
             <input type="hidden" name="action" value="logout">
             <button type="submit" class="btn-logout">Cerrar Sesión</button>
         </form>
         <div style="clear:both;"></div>
 
-        <!-- Grid de operaciones CRUD -->
         <div class="grid-2">
             <div class="panel-form">
                 <h3>Registrar Nueva Persona</h3>
